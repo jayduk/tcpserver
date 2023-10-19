@@ -1,0 +1,6 @@
+build/
+resource/
+.vscode/settings.json
+.cache
+compile_commands.json
+myeasylog.log

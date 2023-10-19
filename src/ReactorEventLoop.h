@@ -1,0 +1,33 @@
+#ifndef REACTOREVENTLOOP_H_
+#define REACTOREVENTLOOP_H_
+
+#include "EventLoop.h"
+#include "Poller.h"
+#include <memory>
+#include <vector>
+
+class Channel;
+
+class ReactorEventLoop : public EventLoop
+{
+private:
+    std::unique_ptr<Poller> poller_;
+
+    std::vector<Channel*> ownChannels_;
+    std::vector<Channel*> activeChannels_;
+
+    int wakeup_fd_;
+    Channel* wakeup_channel_;
+
+public:
+    ReactorEventLoop();
+    ~ReactorEventLoop() override = default;
+
+    void updateChannel(Channel* channel);
+
+protected:
+    void onloop() override;
+    void wakeUp() override;
+};
+
+#endif  // REACTOREVENTLOOP_H_
