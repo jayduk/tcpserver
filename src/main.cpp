@@ -5,12 +5,16 @@
 #include "TcpServer.h"
 #include "http/HttpServer.h"
 #include "thread/threadpool.h"
+#include <bits/types/struct_timeval.h>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sys/select.h>
+#include <thread>
 #include <unistd.h>
+#include <vector>
 
 #include "log/easylogging++.h"
 
@@ -40,6 +44,12 @@ int main()
 {
     configLogSettings();
 
+    struct timeval tv
+    {};
+    gettimeofday(&tv, nullptr);
+
+    INF << tv.tv_sec << " " << tv.tv_usec;
+
     // ReactorEventLoop loop;
     // TcpServer server(&loop, 9002, true);
 
@@ -49,7 +59,7 @@ int main()
 
     // loop.loop();
     ReactorEventLoop loop;
-    HttpServer server(&loop, 9005);
+    HttpServer       server(&loop, 9005);
 
     server.onHandleHttpRequest_ = [](HttpRequest r, const TcpConnectionPtr& c) {
         INF << r.method();
@@ -58,6 +68,13 @@ int main()
         INF << r.inputBuffer();
         c->send("HELLO");
     };
+
+    loop.runEvery(
+        1000,
+        [] {
+            INF << "HELLO";
+        },
+        5000);
 
     loop.loop();
 }

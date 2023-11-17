@@ -38,7 +38,7 @@ void Channel::handleEvent()
 
 void Channel::tie(const std::shared_ptr<void>& t)
 {
-    tie_ = t;
+    tie_  = t;
     tied_ = true;
 }
 
@@ -50,6 +50,8 @@ void Channel::enableReading()
 
     loop_->updateChannel(this);
     index_ = kToMod;
+
+    // INF << "enableReading fd: " << fd();
 }
 
 void Channel::enableWriting()

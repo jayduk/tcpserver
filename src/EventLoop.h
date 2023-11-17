@@ -8,13 +8,15 @@
 #include <thread>
 #include <vector>
 
+thread_local const std::thread::id THIS_THREAD_ID = std::this_thread::get_id();
+
 class EventLoop : noncopyable
 {
 private:
     const std::thread::id loop_thread_id_;
 
     std::vector<std::function<void()>> pending_functors_;
-    std::mutex functor_mutex_;
+    std::mutex                         functor_mutex_;
 
     bool islooping;
 
@@ -26,7 +28,7 @@ public:
     template<typename Callable, typename... Args>
     void runInLoop(Callable&& func, Args&&... args);
 
-    void assetInLoopThread() const;
+    void               assetInLoopThread() const;
     [[nodiscard]] bool isInLoopThread() const;
 
 protected:

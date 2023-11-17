@@ -21,8 +21,8 @@ class Buffer
 {
 private:
     std::vector<char> buffer_;
-    std::size_t read_index_;
-    std::size_t write_index_;
+    std::size_t       read_index_;
+    std::size_t       write_index_;
 
     std::size_t cache_offset_;
 
@@ -46,6 +46,7 @@ public:
 
     void append(const void* data, size_t len);
     void append(const std::string& data);
+    size_t readFromFd(int fd, int& _errno);
 
     void fill(size_t len);
     void fillAll();
@@ -55,7 +56,7 @@ public:
     void retrieveAll();
 
     std::string retrieveAllAsString();
-    size_t tryReadString(size_t len, std::string* out);
+    size_t      tryReadString(size_t len, std::string* out);
 
     char* begin();
     char* end();
@@ -63,11 +64,11 @@ public:
     char* peek();
     char* tail();
 
-    template<typename T>
-    Buffer& operator<<(const T& rhs);
+    // template<typename T>
+    // Buffer& operator<<(const T& rhs);
 
-    template<typename T>
-    Buffer& operator>>(T& rhs);
+    // template<typename T>
+    // Buffer& operator>>(T& rhs);
 
 public:
     char* findFirst(char ch, char* beg, char* end);
@@ -79,27 +80,27 @@ public:
     char* cacheFindFirst(const std::string& ch);
 };
 
-template<typename T>
-Buffer& Buffer::operator<<(const T& rhs)
-{
-    append(&rhs, sizeof(T));
-    return *this;
-}
+// template<typename T>
+// Buffer& Buffer::operator<<(const T& rhs)
+// {
+//     append(&rhs, sizeof(T));
+//     return *this;
+// }
 
-template<typename T>
-Buffer& Buffer::operator>>(T& rhs)
-{
-    if (readableBytes() < sizeof(rhs))
-        throw BufferNoEnoughContentException();
+// template<typename T>
+// Buffer& Buffer::operator>>(T& rhs)
+// {
+//     if (readableBytes() < sizeof(rhs))
+//         throw BufferNoEnoughContentException();
 
-    std::memcpy(&rhs, &*(buffer_.begin() + (long)read_index_), sizeof(T));
+//     std::memcpy(&rhs, &*(buffer_.begin() + (long)read_index_), sizeof(T));
 
-    if (readableBytes() == sizeof(rhs))
-        read_index_ = write_index_ = 0;
-    else
-        read_index_ += sizeof(T);
+//     if (readableBytes() == sizeof(rhs))
+//         read_index_ = write_index_ = 0;
+//     else
+//         read_index_ += sizeof(T);
 
-    return *this;
-}
+//     return *this;
+// }
 
 #endif  // UTIL_BUFFER_H_

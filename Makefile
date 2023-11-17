@@ -5,10 +5,11 @@ COMPFLAGS = -Wall -g -std=c++17 $(HEADER_FLAGS) -c -MMD -O0 #-Wextra -Werror
 LINKFLAGS = -lpthread -Wall -g -std=c++17
 
 ARGS = 
-BINDIR = build
+BINDIR = build/src
 SRCDIR = src
 INCDIR = src lib
 BINARY = lib/log/easylogging++.o
+TESTDIR = test
 
 PROJECT_DIR = $(shell cd)
 
@@ -56,8 +57,9 @@ clear.d:
 tar:
 	@echo $(TARGET)
 
+.PHONY: test
 test:
-	echo make testing
+	cd test && make -c
 
 log:
 	cd lib/log && g++ easylogging++.cc -c -o easylogging++.o

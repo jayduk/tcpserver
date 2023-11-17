@@ -28,12 +28,12 @@ void EventLoop::loop()
 
 void EventLoop::assetInLoopThread() const
 {
-    assert(loop_thread_id_ == std::this_thread::get_id());
+    assert(loop_thread_id_ == THIS_THREAD_ID);
 }
 
 bool EventLoop::isInLoopThread() const
 {
-    return loop_thread_id_ == std::this_thread::get_id();
+    return loop_thread_id_ == THIS_THREAD_ID;
 }
 
 void EventLoop::runPendingFunctors()

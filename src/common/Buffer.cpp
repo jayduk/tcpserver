@@ -1,9 +1,12 @@
 #include "Buffer.h"
 #include <algorithm>
+#include <bits/types/struct_iovec.h>
 #include <cassert>
+#include <cerrno>
 #include <cstddef>
 #include <cstring>
 #include <string>
+#include <sys/uio.h>
 
 #include "log/easylogging++.h"
 
@@ -41,7 +44,7 @@ void Buffer::ensureSpace(size_t len)
         std::copy(begin() + read_index_,
                   begin() + write_index_,
                   begin());
-        read_index_ = 0;
+        read_index_  = 0;
         write_index_ = read_index_ + readable;
     }
     else
@@ -60,6 +63,49 @@ void Buffer::append(const void* data, size_t len)
 void Buffer::append(const std::string& data)
 {
     append(data.c_str(), data.size());
+}
+
+size_t Buffer::readFromFd(int fd, int& _errno)
+{
+    char   extra_buffer[1024];
+    size_t total_read_size = 0;
+
+    while (true)
+    {
+        iovec iov[2];
+        auto  buffer_writeable = writeableBytes();
+
+        iov[0].iov_base = tail();
+        iov[0].iov_len  = buffer_writeable;
+
+        iov[1].iov_base = extra_buffer;
+        iov[1].iov_len  = sizeof(extra_buffer);
+
+        ssize_t read_size = ::readv(fd, iov, 2);
+
+        if (read_size == -1)
+        {
+            if (errno == EINTR)
+                continue;
+            else if (errno == EAGAIN)
+                return total_read_size;
+            else
+            {
+                _errno = errno;
+                return total_read_size;
+            }
+        }
+        else
+            total_read_size += read_size;
+
+        if (read_size > (ssize_t)buffer_writeable)
+        {
+            fillAll();
+            append(extra_buffer, read_size - buffer_writeable);
+        }
+        else
+            fill(read_size);
+    }
 }
 
 void Buffer::fill(size_t len)
@@ -155,7 +201,7 @@ char* Buffer::findFirst(char ch)
 char* Buffer::cacheFindFirst(char ch)
 {
     char* start = peek() + cache_offset_;
-    char* res = findFirst(ch, start, tail());
+    char* res   = findFirst(ch, start, tail());
     if (res)
         cache_offset_ = 0;
     else
@@ -178,7 +224,7 @@ char* Buffer::findFirst(const std::string& ch)
 char* Buffer::cacheFindFirst(const std::string& ch)
 {
     char* start = peek() + cache_offset_;
-    char* res = findFirst(ch, start, tail());
+    char* res   = findFirst(ch, start, tail());
     if (res)
         cache_offset_ = 0;
     else

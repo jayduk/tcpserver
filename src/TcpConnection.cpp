@@ -49,7 +49,6 @@ TcpConnection::~TcpConnection()
 void TcpConnection::init()
 {
     channel_->tie(shared_from_this());
-
     channel_->enableReading();
 }
 

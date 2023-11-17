@@ -1,12 +1,16 @@
 #include "ReactorEventLoop.h"
 #include "Channel.h"
 #include "EpollPoller.h"
+#include "TimerTask.h"
 #include "sock.h"
 #include <cstdint>
+#include <memory>
 #include <unistd.h>
+#include <utility>
 
 ReactorEventLoop::ReactorEventLoop()
   : poller_(new EpollPoller())
+  , timer_queue_(new TimerQueue(this))
   , wakeup_fd_(EventFd(0, EFD_NONBLOCK | EFD_CLOEXEC))
   , wakeup_channel_(new Channel(this, wakeup_fd_))
 {
@@ -21,6 +25,18 @@ ReactorEventLoop::ReactorEventLoop()
 void ReactorEventLoop::updateChannel(Channel* channel)
 {
     runInLoop(&Poller::updateChannel, poller_.get(), channel);
+}
+
+void ReactorEventLoop::runAfter(int milliseconds, std::function<void()> callback)
+{
+    auto task = std::make_shared<TimerTask>(TimeStamp::nowAfter(milliseconds), std::move(callback));
+    timer_queue_->addTimer(task);
+}
+
+void ReactorEventLoop::runEvery(int interval, std::function<void()> callback, int delay)
+{
+    auto task = std::make_shared<TimerTask>(TimeStamp::nowAfter(delay), std::move(callback), interval);
+    timer_queue_->addTimer(task);
 }
 
 void ReactorEventLoop::onloop()
