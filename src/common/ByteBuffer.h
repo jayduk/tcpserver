@@ -1,22 +1,44 @@
-// #ifndef COMMON_BYTEBUFFER_H_
-// #define COMMON_BYTEBUFFER_H_
+#ifndef COMMON_BYTEBUFFER_H_
+#define COMMON_BYTEBUFFER_H_
 
-// #include "common/PoolAllocator.h"
-// #include <vector>
-// template<typename Alloc = PoolAllocator>
-// class ByteBuffer
-// {
-//     typedef char  value_type;
-//     typedef char* pointer;
+#include <iterator>
+#include <vector>
 
-//     typedef std::vector<pointer> map_type;
+struct ByteBufferBlock
+{
+    int   size;
+    char* data;
+};
 
-// private:
-//     map_type map;
+class ByteBufferIterator : public std::iterator<std::random_access_iterator_tag, char>
+{
+private:
+    std::vector<char*> map_;
 
-// public:
-//     ByteBuffer();
-//     ~ByteBuffer() = default;
-// };
+    char* cur_;
 
-// #endif  // COMMON_BYTEBUFFER_H_
+private:
+    void increment()
+    {
+        ++cur_;
+    }
+
+    void decrement()
+    {
+        --cur_;
+    }
+};
+
+class ByteBuffer
+{
+    typedef std::vector<char*> map_type;
+
+private:
+    map_type map;
+
+public:
+    ByteBuffer()  = default;
+    ~ByteBuffer() = default;
+};
+
+#endif  // COMMON_BYTEBUFFER_H_
