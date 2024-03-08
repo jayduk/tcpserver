@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <utility>
 
+#include "log/easylogging++.h"
+
 ReactorEventLoop::ReactorEventLoop()
   : poller_(new EpollPoller())
   , timer_queue_(new TimerQueue(this))
@@ -48,6 +50,8 @@ void ReactorEventLoop::onloop()
     {
         channel->handleEvent();
     }
+
+    INF << "one loop tick";
 }
 
 void ReactorEventLoop::wakeUp()

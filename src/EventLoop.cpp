@@ -25,7 +25,6 @@ void EventLoop::loop()
     while (true)
     {
         onloop();
-
         runPendingFunctors();
     }
 
