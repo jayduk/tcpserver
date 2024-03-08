@@ -2,7 +2,8 @@
 #include "InetAddress.h"
 #include "TcpConnection.h"
 #include "TcpServer.h"
-#include "http/HttpRequestBuilder.h"
+#include "common/ByteBuffer.h"
+#include "http/HttpContext.h"
 
 #include <any>
 #include <cstddef>
@@ -18,26 +19,26 @@ HttpServer::HttpServer(ReactorEventLoop* loop, uint16_t port)
         onEstablishNewConnection(conn, addr);
     };
 
-    server_.onReciveMessageCallback = [this](const TcpConnectionPtr& conn, Buffer* buffer) {
+    server_.onReciveMessageCallback = [this](const TcpConnectionPtr& conn, ByteBuffer<>* buffer) {
         onReciveHttpMessage(conn, buffer);
     };
 }
 
 void HttpServer::onEstablishNewConnection(const TcpConnectionPtr& conn, InetAddress addr)
 {
-    conn->set_context(HttpRequestBuilder());
+    conn->set_context(std::make_any<HttpContext>());
 }
 
-void HttpServer::onReciveHttpMessage(const TcpConnectionPtr& conn, Buffer* buffer) const
+void HttpServer::onReciveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const
 {
-    auto& parser = std::any_cast<HttpRequestBuilder&>(conn->context());
+    auto& parser = std::any_cast<HttpContext&>(conn->context());
 
-    parser.parase(buffer);
+    // int parsed = parser.parase(buffer);
 
-    if (parser.hasError())
-        conn->shutdown();
-    else if (parser.ready())
-        onHandleHttpRequest_(parser.request(), conn);
-    else
-        TRA << conn->fd() << " receive unready http message";
+    // if (parser.hasError())
+    //     conn->shutdown();
+    // else if (parser.ready())
+    //     onHandleHttpRequest_(parser.request(), conn);
+    // else
+    //     TRA << conn->fd() << " receive unready http message";
 }

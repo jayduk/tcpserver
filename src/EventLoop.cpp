@@ -5,9 +5,15 @@
 #include <thread>
 #include <vector>
 
+#include "log/easylogging++.h"
+
 EventLoop::EventLoop()
   : loop_thread_id_(std::this_thread::get_id())
   , islooping(false)
+{
+}
+
+void EventLoop::start()
 {
 }
 

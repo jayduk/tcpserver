@@ -28,13 +28,6 @@ private:
 
 public:
     explicit Buffer(size_t init_size = 1024);
-    // Buffer(const Buffer& buffer)
-    //   : buffer_(buffer.buffer_)
-    //   , read_index_(buffer.read_index_)
-    //   , write_index_(buffer.write_index_)
-    // {
-    //     WAR << "Buffer(const Buffer& buffer)";
-    // }
     ~Buffer() = default;
 
 public:
@@ -44,8 +37,8 @@ public:
 
     void ensureSpace(size_t len);
 
-    void append(const void* data, size_t len);
-    void append(const std::string& data);
+    void   append(const void* data, size_t len);
+    void   append(const std::string& data);
     size_t readFromFd(int fd, int& _errno);
 
     void fill(size_t len);

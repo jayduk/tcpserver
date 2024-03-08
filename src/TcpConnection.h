@@ -3,7 +3,7 @@
 
 #include "Channel.h"
 #include "ReactorEventLoop.h"
-#include "common/Buffer.h"
+#include "common/ByteBuffer.h"
 #include "common/noncopyable.h"
 #include <functional>
 #include <memory>
@@ -24,12 +24,12 @@ private:
     ReactorEventLoop*        loop_;
     std::unique_ptr<Channel> channel_;
 
-    Buffer read_buffer_;
-    Buffer write_buffer_;
+    ByteBuffer<> read_buffer_;
+    ByteBuffer<> write_buffer_;
 
 public:
-    std::function<void(TcpConnectionPtr, Buffer*)> onReciveMessageCallback;
-    std::function<void(int)>                       onConnectionCloseCallback;
+    std::function<void(TcpConnectionPtr, ByteBuffer<>*)> onReciveMessageCallback;
+    std::function<void(int)>                             onConnectionCloseCallback;
 
 public:
     TcpConnection(ReactorEventLoop* loop, int fd_, bool edge_mode = true);
@@ -42,7 +42,6 @@ public:
 
     std::any& context();
 
-    void set_context(const std::any& context);
     void set_context(std::any&& context);
 
     int fd() const;
@@ -53,7 +52,6 @@ private:
     void handleClose();
 
 private:
-    bool readAllMessage();
     void sendInloop(const std::string& msg);
 };
 

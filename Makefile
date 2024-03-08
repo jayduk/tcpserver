@@ -5,10 +5,10 @@ COMPFLAGS = -Wall -g -std=c++17 $(HEADER_FLAGS) -c -MMD -O0 #-Wextra -Werror
 LINKFLAGS = -lpthread -Wall -g -std=c++17
 
 ARGS = 
-BINDIR = build/src
+BINDIR = build
 SRCDIR = src
 INCDIR = src lib
-BINARY = lib/log/easylogging++.o
+BINARY = lib/log/easylogging++.o lib/http-parser/http_parser.o
 TESTDIR = test
 
 PROJECT_DIR = $(shell cd)

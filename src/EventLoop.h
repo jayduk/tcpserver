@@ -13,7 +13,7 @@ thread_local const std::thread::id THIS_THREAD_ID = std::this_thread::get_id();
 class EventLoop : noncopyable
 {
 private:
-    const std::thread::id loop_thread_id_;
+    std::thread::id loop_thread_id_;
 
     std::vector<std::function<void()>> pending_functors_;
     std::mutex                         functor_mutex_;
@@ -23,6 +23,7 @@ private:
 public:
     EventLoop();
 
+    void start();
     void loop();
 
     template<typename Callable, typename... Args>

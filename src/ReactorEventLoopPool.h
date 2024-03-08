@@ -9,16 +9,16 @@ class ReactorEventLoopPool
 {
 private:
     ReactorEventLoop** loops_;
-    int thread_nums_;
-    bool started_;
-    int peek_idx_;
+    int                thread_nums_;
+    bool               started_{false};
+    int                peek_idx_;
 
 public:
-    ReactorEventLoopPool() = default;
+    ReactorEventLoopPool()  = default;
     ~ReactorEventLoopPool() = default;
 
 public:
-    void setThreadNum(int num);
+    void              setThreadNum(int num);
     ReactorEventLoop* selectLoop();
 
 private:

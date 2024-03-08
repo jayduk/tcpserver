@@ -5,8 +5,8 @@
 #include "ReactorEventLoop.h"
 #include "TcpConnection.h"
 #include "TcpServer.h"
+#include "common/ByteBuffer.h"
 #include "common/noncopyable.h"
-#include "http/HttpRequestBuilder.h"
 
 #include <cstdint>
 #include <functional>
@@ -19,14 +19,14 @@ private:
     TcpServer server_;
 
 public:
-    std::function<void(HttpRequest, TcpConnectionPtr)> onHandleHttpRequest_;
+    // std::function<void(HttpRequest, TcpConnectionPtr)> onHandleHttpRequest_;
 
 public:
     HttpServer(ReactorEventLoop* loop, uint16_t port);
 
 private:
     static void onEstablishNewConnection(const TcpConnectionPtr& conn, InetAddress addr);
-    void onReciveHttpMessage(const TcpConnectionPtr& conn, Buffer* buffer) const;
+    void        onReciveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const;
 };
 
 #endif  // HTTP_HTTPSERVER_H_
