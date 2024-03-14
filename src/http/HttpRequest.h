@@ -2,7 +2,6 @@
 #include "http-parser/http_parser.h"
 #include "http/HttpStream.h"
 #include "http/common.h"
-#include "tcp/TcpConnection.h"
 
 #include <cstddef>
 #include <map>

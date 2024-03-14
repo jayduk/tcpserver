@@ -3,9 +3,12 @@
 #include "http/HttpContext.h"
 #include "tcp/InetAddress.h"
 #include "tcp/TcpConnection.h"
+#include "util/ThreadPool.h"
 
 #include <any>
 #include <memory>
+#include <string>
+#include <utility>
 
 HttpServer::HttpServer(ReactorEventLoop* loop, uint16_t port)
   : server_(loop, port)
@@ -23,13 +26,10 @@ HttpServer::HttpServer(ReactorEventLoop* loop, uint16_t port)
 
 void HttpServer::onEstablishConnection(const TcpConnectionPtr& conn, InetAddress addr)
 {
-    conn->set_context(std::make_any<HttpContext>());
-
-    auto& http_context = std::any_cast<HttpContext&>(conn->context());
-    http_context.set_thread_pool(&pool_);
+    conn->set_context(std::make_any<HttpContext>(&pool_, conn));
 }
 
-void HttpServer::onReceiveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const
+void HttpServer::onReceiveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer)
 {
     auto& context = std::any_cast<HttpContext&>(conn->context());
     if (!context.handle(buffer)) {

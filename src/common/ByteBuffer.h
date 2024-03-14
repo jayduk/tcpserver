@@ -136,7 +136,7 @@ public:
 
     bool operator!=(const self& rhs) const
     {
-        return *this != rhs;
+        return !(*this == rhs);
     }
 };
 
@@ -166,6 +166,7 @@ public:
     size_t      retrieve_as_data(char* data, size_t len);
 
     void append(const char* data, size_t len);
+    void append(const std::string& data);
 
     template<int other_buffer_size>
     void append(ByteBuffer<other_buffer_size> buffer);
@@ -396,6 +397,12 @@ void ByteBuffer<buffer_size>::append(const char* data, size_t len)
 
     std::copy(data, data + len, end_);
     end_ += len;
+}
+
+template<int buffer_size>
+void ByteBuffer<buffer_size>::append(const std::string& data)
+{
+    append(data.c_str(), data.size());
 }
 
 template<int buffer_size>

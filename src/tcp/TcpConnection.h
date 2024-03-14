@@ -39,6 +39,7 @@ public:
     void init();
 
     void send(const std::string& msg);
+    void send(ByteBuffer<>* buffer);
     void shutdown();
 
     std::any& context();

@@ -1,12 +1,21 @@
 #include "http/HttpContext.h"
 #include "common/ByteBuffer.h"
 #include "http-parser/http_parser.h"
+#include "http/HttpResponse.h"
+#include <memory>
+#include <mutex>
 #include <string>
 #include <sys/types.h>
 
-HttpContext::HttpContext()
+HttpContext::HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>& conn)
+  : conn_(conn)
+  , thread_pool_(pool)
 {
     http_parser_init(&parser_, HTTP_REQUEST);
+    http_parser_settings_init(&settings_);
+
+    requests_mt_ = new std::mutex();
+
     parser_.data = this;
 
     settings_.on_message_begin = [](http_parser* parser) -> int {
@@ -81,6 +90,11 @@ HttpContext::HttpContext()
     };
 }
 
+HttpContext::~HttpContext()
+{
+    delete requests_mt_;
+}
+
 bool HttpContext::handle(ByteBuffer<>* buffer)
 {
     auto clips = buffer->clips();
@@ -105,25 +119,48 @@ bool HttpContext::handle(ByteBuffer<>* buffer)
 
 void HttpContext::handle_request()
 {
+    std::unique_lock<std::mutex> lock(*requests_mt_);
+
     if (requests_.empty()) {
-        requests_.push_back(request_);
+        requests_.push(request_);
 
         thread_pool_->commit([this]() {
             exec_on_thread();
         });
+
     } else {
-        requests_.push_back(request_);
+        requests_.push(request_);
     }
 }
 
 void HttpContext::exec_on_thread()
 {
+    std::unique_lock<std::mutex> lock(*requests_mt_);
     while (!requests_.empty()) {
         auto request = requests_.front();
-        requests_.pop_back();
+        requests_.pop();
+
+        lock.unlock();
 
         // handle request
-    }
+        std::shared_ptr<HttpResponse> response = std::make_shared<HttpResponse>();
 
-    // handle request
+        ByteBuffer<> buffer;
+        response->to_bytebuffer(&buffer);
+        response->conn_->send(buffer.retrieve_as_string());
+
+        lock.lock();
+    }
+}
+
+std::shared_ptr<HttpResponse> HttpContext::build_response(std::shared_ptr<HttpRequest> request)
+{
+    auto resp = std::make_shared<HttpResponse>();
+
+    resp->conn_ = conn_.lock();
+
+    resp->version_               = request->version_;
+    resp->headers_["Connection"] = "keep-alive";
+
+    return resp;
 }

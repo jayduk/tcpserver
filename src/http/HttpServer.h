@@ -24,8 +24,8 @@ public:
     HttpServer(ReactorEventLoop* loop, uint16_t port);
 
 private:
-    void onEstablishConnection(const TcpConnectionPtr& conn, InetAddress addr);
-    void onReceiveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const;
+    void        onEstablishConnection(const TcpConnectionPtr& conn, InetAddress addr);
+    static void onReceiveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer);
 };
 
 #endif  // HTTP_HTTPSERVER_H_

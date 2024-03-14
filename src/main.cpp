@@ -25,7 +25,11 @@ int main()
     configLogSettings();
 
     ReactorEventLoop loop;
-    TcpServer        server(&loop, 8899);
+    TcpServer        server(&loop, 8859);
+
+    server.handle_message_cb = [](const TcpConnectionPtr& conn, ByteBuffer<>* buffer) {
+        conn->send(buffer->retrieve_as_string());
+    };
 
     loop.loop();
 }

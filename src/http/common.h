@@ -1,6 +1,7 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <string>
 enum class HttpVersion
 {
     Http1_0 = 10,
@@ -18,5 +19,7 @@ enum class HttpMethod
     OPTION,
     TRACE,
 };
+
+std::string HttpVersionToString(HttpVersion version);
 
 #endif  //_common_h_

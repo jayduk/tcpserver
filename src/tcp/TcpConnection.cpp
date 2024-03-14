@@ -34,8 +34,9 @@ TcpConnection::~TcpConnection()
 {
     INF << fd_ << " ~tcpconnection()";
 
-    if (running)
+    if (running) {
         handleClose();
+    }
 }
 
 void TcpConnection::init()
@@ -47,6 +48,13 @@ void TcpConnection::init()
 void TcpConnection::send(const std::string& msg)
 {
     loop_->runInLoop(&TcpConnection::sendInLoop, this, msg);
+}
+
+void TcpConnection::send(ByteBuffer<>* buffer)
+{
+    loop_->runInLoop([this, buffer] {
+        // sendInLoop(buffer->retrieveAsString());
+    });
 }
 
 void TcpConnection::shutdown()

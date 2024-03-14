@@ -3,15 +3,18 @@
 
 #include "common/ByteBuffer.h"
 #include "http/HttpStream.h"
+#include "http/common.h"
 #include "tcp/TcpConnection.h"
 #include <map>
 
 class HttpResponse
 {
+    friend class HttpContext;
+
 private:
     TcpConnectionPtr conn_;
 
-    std::string method_;
+    HttpVersion version_;
     int         status_code_;
     std::string reason_phrase_;
 
@@ -19,12 +22,23 @@ private:
 
     HttpStream body_buffer_;
 
+    bool is_chunked_;
+    bool is_header_sent_;
+
 public:
     HttpResponse();
     ~HttpResponse() = default;
 
+public:
+    void       set_status_code(int code, const std::string& phrase);
+    void       set_header(const std::string& key, const std::string& value);
+    HttpStream body_buffer();
+
     void flush();
     void to_bytebuffer(ByteBuffer<>* buffer);
+
+private:
+    void set_chunked();
 };
 
 #endif  // HTTP_HTTPRESPONSE_H_

@@ -2,14 +2,19 @@
 #define __HTTPCONTEXT_H__
 
 #include "common/ByteBuffer.h"
+#include "common/noncopyable.h"
 #include "http-parser/http_parser.h"
 #include "http/HttpRequest.h"
+#include "http/HttpResponse.h"
 #include "http/common.h"
 #include "tcp/TcpConnection.h"
 #include "util/ThreadPool.h"
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <queue>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -18,10 +23,12 @@
 class HttpContext
 {
     std::weak_ptr<TcpConnection> conn_;
-    ThreadPool*                  thread_pool_;
+    ThreadPool*                  thread_pool_{nullptr};
 
-    std::shared_ptr<HttpRequest>              request_;
-    std::vector<std::shared_ptr<HttpRequest>> requests_;
+    std::shared_ptr<HttpRequest>             request_;
+    std::queue<std::shared_ptr<HttpRequest>> requests_;
+
+    std::mutex* requests_mt_;
 
     http_parser          parser_{};
     http_parser_settings settings_{};
@@ -30,8 +37,8 @@ class HttpContext
     std::string header_field_{false};
 
 public:
-    HttpContext();
-    void set_thread_pool(ThreadPool* pool) {}
+    HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>& conn);
+    ~HttpContext();
 
 public:
     bool handle(ByteBuffer<>* buffer);
@@ -39,6 +46,8 @@ public:
 private:
     void handle_request();
     void exec_on_thread();
+
+    std::shared_ptr<HttpResponse> build_response(std::shared_ptr<HttpRequest> request);
 };
 
 #endif  //_HttpContext_h_
