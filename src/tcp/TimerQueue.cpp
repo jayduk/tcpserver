@@ -1,6 +1,6 @@
 #include "TimerQueue.h"
-#include "Channel.h"
 #include "TimerTask.h"
+#include "tcp/Channel.h"
 
 #include <cassert>
 #include <memory>
@@ -21,8 +21,7 @@ TimerQueue::TimerQueue(ReactorEventLoop* loop)
 std::vector<TimerTaskPtr> TimerQueue::getExpired(TimeStamp now)
 {
     std::vector<TimerTaskPtr> expired_tasks;
-    while (!timers_.empty() && timers_.top()->expired(now))
-    {
+    while (!timers_.empty() && timers_.top()->expired(now)) {
         TimerTaskPtr task = timers_.top();
         timers_.pop();
 
@@ -31,8 +30,7 @@ std::vector<TimerTaskPtr> TimerQueue::getExpired(TimeStamp now)
 
         expired_tasks.push_back(task);
 
-        if (task->repeat())
-        {
+        if (task->repeat()) {
             task->tick();
             timers_.push(task);
         }
@@ -53,8 +51,7 @@ TimerTaskPtr TimerQueue::addTimer(TimerTaskPtr timer_task)
 
 TimerTaskPtr TimerQueue::peek()
 {
-    while (!timers_.empty())
-    {
+    while (!timers_.empty()) {
         auto timer_task = timers_.top();
         if (timer_task->canceled())
             timers_.pop();
@@ -68,8 +65,7 @@ TimerTaskPtr TimerQueue::peek()
 int TimerQueue::createTimerFd()
 {
     int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-    if (timer_fd < 0)
-    {
+    if (timer_fd < 0) {
         perror("timerfd_create");
         abort();
     }
@@ -104,8 +100,7 @@ void TimerQueue::resetTimerFd()
     new_value.it_value = peek()->expiration().timespecFromNow();
 
     int ret = timerfd_settime(timer_fd_, 0, &new_value, &old_value);
-    if (ret)
-    {
+    if (ret) {
         perror("timerfd_settime");
         abort();
     }

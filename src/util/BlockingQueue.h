@@ -10,24 +10,45 @@ template<typename T>
 class BlockingQueue
 {
 private:
-    std::queue<T> queue_;
+    std::queue<T>             queue_;
     mutable std::shared_mutex queue_mutex_;
-    std::mutex pop_mutex_;
-    std::condition_variable pop_condition_;
+    std::mutex                pop_mutex_;
+    std::condition_variable   pop_condition_;
+
+    //TODO: add max size
+    int capacity_;
 
 public:
-    BlockingQueue();
+    explicit BlockingQueue(int capacity = 10);
     ~BlockingQueue();
 
-    T pop();
+    T    pop();
     bool pop(int millis, T* out);
     void push(T item);
-    int size() const;
+    int  size() const;
     bool empty() const;
+
+    bool try_pop(T* out);
 };
+template<typename T>
+bool BlockingQueue<T>::try_pop(T* out)
+{
+    std::unique_lock<std::shared_mutex> lock(queue_mutex_);
+
+    if (queue_.empty()) {
+        return false;
+    }
+
+    (*out) = queue_.front();
+    queue_.pop();
+    return true;
+}
 
 template<typename T>
-inline BlockingQueue<T>::BlockingQueue() = default;
+inline BlockingQueue<T>::BlockingQueue(int capacity)
+  : capacity_(capacity)
+{
+}
 
 template<typename T>
 inline BlockingQueue<T>::~BlockingQueue() = default;
@@ -36,13 +57,12 @@ template<typename T>
 T BlockingQueue<T>::pop()
 {
     std::unique_lock<std::mutex> pop_lock(pop_mutex_);
+
+    T ret;
     pop_condition_.wait(pop_lock, [&] {
-        return this->size() != 0;
+        return try_pop(&ret);
     });
 
-    std::unique_lock<std::shared_mutex> lock(queue_mutex_);
-    T ret = queue_.front();
-    queue_.pop();
     return ret;
 }
 
@@ -50,21 +70,15 @@ template<typename T>
 inline bool BlockingQueue<T>::pop(int millis, T* out)
 {
     std::unique_lock<std::mutex> pop_lock(pop_mutex_);
-    bool is_overtime = !pop_condition_.wait_for(
+
+    bool wait_success = pop_condition_.wait_for(
         pop_lock,
         std::chrono::milliseconds(millis),
         [&] {
-            return this->size() != 0;
+            return try_pop(out);
         });
-    if (is_overtime)
-    {
-        return false;
-    }
 
-    std::unique_lock<std::shared_mutex> lock(queue_mutex_);
-    (*out) = queue_.front();
-    queue_.pop();
-    return true;
+    return wait_success;
 }
 
 template<typename T>

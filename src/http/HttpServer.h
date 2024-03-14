@@ -1,13 +1,13 @@
 #ifndef HTTP_HTTPSERVER_H_
 #define HTTP_HTTPSERVER_H_
 
-#include "InetAddress.h"
-#include "ReactorEventLoop.h"
-#include "TcpConnection.h"
-#include "TcpServer.h"
 #include "common/ByteBuffer.h"
 #include "common/noncopyable.h"
-#include "thread/threadpool.h"
+#include "tcp/InetAddress.h"
+#include "tcp/ReactorEventLoop.h"
+#include "tcp/TcpConnection.h"
+#include "tcp/TcpServer.h"
+#include "util/ThreadPool.h"
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -24,8 +24,8 @@ public:
     HttpServer(ReactorEventLoop* loop, uint16_t port);
 
 private:
-    void onEstablishNewConnection(const TcpConnectionPtr& conn, InetAddress addr);
-    void onReciveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const;
+    void onEstablishConnection(const TcpConnectionPtr& conn, InetAddress addr);
+    void onReceiveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const;
 };
 
 #endif  // HTTP_HTTPSERVER_H_

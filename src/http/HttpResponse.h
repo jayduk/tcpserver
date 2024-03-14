@@ -1,9 +1,9 @@
 #ifndef HTTP_HTTPRESPONSE_H_
 #define HTTP_HTTPRESPONSE_H_
 
-#include "TcpConnection.h"
 #include "common/ByteBuffer.h"
 #include "http/HttpStream.h"
+#include "tcp/TcpConnection.h"
 #include <map>
 
 class HttpResponse

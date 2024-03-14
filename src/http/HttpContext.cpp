@@ -85,7 +85,7 @@ bool HttpContext::handle(ByteBuffer<>* buffer)
 {
     auto clips = buffer->clips();
     for (auto clip : clips) {
-        auto parsed = http_parser_execute(&parser_, &settings_, clip.first, clip.second);
+        int parsed = (int)http_parser_execute(&parser_, &settings_, clip.first, clip.second);
         if (parsed != clip.second) {
             return false;
         }

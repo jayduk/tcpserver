@@ -1,12 +1,12 @@
 #ifndef __HTTPCONTEXT_H__
 #define __HTTPCONTEXT_H__
 
-#include "TcpConnection.h"
 #include "common/ByteBuffer.h"
 #include "http-parser/http_parser.h"
 #include "http/HttpRequest.h"
 #include "http/common.h"
-#include "thread/threadpool.h"
+#include "tcp/TcpConnection.h"
+#include "util/ThreadPool.h"
 #include <cstddef>
 #include <map>
 #include <memory>

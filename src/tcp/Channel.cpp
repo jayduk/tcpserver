@@ -5,16 +5,14 @@
 
 #include "log/easylogging++.h"
 
-Channel::Channel(ReactorEventLoop* loop, int fd, bool edge_mode)
+Channel::Channel(ReactorEventLoop* loop, int fd)
   : loop_(loop)
   , index_(0)
   , sockfd_(fd)
-  , event_(0)
+  , event_(EPOLLET)
   , revent_(0)
   , tied_(false)
 {
-    if (edge_mode)
-        event_ |= EPOLLET;
 }
 
 Channel::~Channel()
@@ -26,8 +24,7 @@ void Channel::handleEvent()
 {
     loop_->assetInLoopThread();
 
-    if (tied_ && tie_.expired())
-    {
+    if (tied_ && tie_.expired()) {
         WAR << "Channel tie has expired";
         return;
     }
@@ -130,18 +127,15 @@ void Channel::handleEventWithGuard()
 {
     TRA << fd() << " trigger epoll event: " << eventToString();
 
-    if ((revent_ & EPOLLHUP) && !(revent_ & EPOLLIN) && closeCallback_)
-    {
+    if ((revent_ & EPOLLHUP) && !(revent_ & EPOLLIN) && closeCallback_) {
         closeCallback_();
     }
 
-    if (revent_ & (EPOLLIN | EPOLLPRI) && readableCallback_)
-    {
+    if (revent_ & (EPOLLIN | EPOLLPRI) && readableCallback_) {
         readableCallback_();
     }
 
-    if (revent_ & (EPOLLOUT) && writeableCallback_)
-    {
+    if (revent_ & (EPOLLOUT) && writeableCallback_) {
         writeableCallback_();
     }
 }

@@ -26,20 +26,17 @@ void CountDownLatch::count_down()
 {
     std::unique_lock<std::mutex> lock(mt_);
 
-    if (--count_ <= 0)
-    {
+    if (--count_ <= 0) {
         cv_.notify_all();
     }
 }
 
 void CountDownLatch::wait()
 {
-        std::unique_lock<std::mutex> lock(mt_);
-
-    while (count_ > 0)
-    {
-        cv_.wait(lock);
-    }
+    std::unique_lock<std::mutex> lock(mt_);
+    cv_.wait(lock, [&]() {
+        return count_ == 0;
+    });
 }
 
 #endif  //_CountDownLatch_h_

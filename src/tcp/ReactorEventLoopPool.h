@@ -2,7 +2,7 @@
 #define REACTOREVENTLOOPPOOL_H_
 
 #include "ReactorEventLoop.h"
-#include "thread/threadpool.h"
+#include "util/ThreadPool.h"
 #include <cstddef>
 #include <thread>
 #include <vector>
@@ -23,7 +23,7 @@ public:
     ReactorEventLoop* selectLoop();
 
 private:
-    void makesureStart();
+    void makeSureStart();
 };
 
 #endif  // REACTOREVENTLOOPPOOL_H_

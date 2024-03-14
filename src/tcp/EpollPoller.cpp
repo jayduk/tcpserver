@@ -1,9 +1,7 @@
 #include "EpollPoller.h"
-#include "Channel.h"
 #include "sock.h"
-#include <cstring>
+#include "tcp/Channel.h"
 #include <sys/epoll.h>
-#include <utility>
 #include <vector>
 
 #include "log/easylogging++.h"
@@ -20,8 +18,7 @@ void EpollPoller::wait(int wait_millis, std::vector<Channel*>& activeChannel)
 {
     int nfd = Epoll_wait(epoll_fd_, &*events_.begin(), static_cast<int>(events_.size()), wait_millis);
 
-    for (int i = 0; i < nfd; ++i)
-    {
+    for (int i = 0; i < nfd; ++i) {
         auto channel = (Channel*)events_[i].data.ptr;
         channel->set_revent(events_[i].events);
         activeChannel.push_back(channel);
@@ -33,8 +30,7 @@ void EpollPoller::wait(int wait_millis, std::vector<Channel*>& activeChannel)
 
 void EpollPoller::updateChannel(Channel* channel)
 {
-    if (channel->index() == Channel::kToDel)
-    {
+    if (channel->index() == Channel::kToDel) {
         INF << channel->fd() << " DEL from reactorloop";
         Epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, channel->fd(), nullptr);
         return;

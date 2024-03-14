@@ -1,10 +1,10 @@
 #ifndef TCPCONNECTION_H_
 #define TCPCONNECTION_H_
 
-#include "Channel.h"
 #include "ReactorEventLoop.h"
 #include "common/ByteBuffer.h"
 #include "common/noncopyable.h"
+#include "tcp/Channel.h"
 #include <functional>
 #include <memory>
 #include <string>
@@ -29,11 +29,11 @@ private:
     ByteBuffer<> write_buffer_;
 
 public:
-    std::function<void(TcpConnectionPtr, ByteBuffer<>*)> onReciveMessageCallback;
-    std::function<void(int)>                             onConnectionCloseCallback;
+    std::function<void(TcpConnectionPtr, ByteBuffer<>*)> receive_bytes_cb;
+    std::function<void(int)>                             close_tcp_cb;
 
 public:
-    TcpConnection(ReactorEventLoop* loop, int fd_, bool edge_mode = true);
+    TcpConnection(ReactorEventLoop* loop, int fd_);
     ~TcpConnection() override;
 
     void init();
@@ -52,7 +52,7 @@ private:
     void handleClose();
 
 private:
-    void sendInloop(const std::string& msg);
+    void sendInLoop(const std::string& msg);
 };
 
 #endif  // TCPCONNECTION_H_

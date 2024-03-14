@@ -16,21 +16,14 @@ private:
     ReactorEventLoop* loop_;
 
     int listen_fd_;
-    bool edge_mode_;
 
     std::unique_ptr<Channel> acceptor_channel_;
 
-    std::function<void(int fd, InetAddress addr)> onNewConnection;
-
 public:
-    Acceptor(ReactorEventLoop* loop, const InetAddress& addr, bool edge_mode = true);
+    Acceptor(ReactorEventLoop* loop, const InetAddress& addr);
     ~Acceptor() = default;
 
-public:
-    void registryNewConnectionCallback(std::function<void(int fd, InetAddress addr)>&& call)
-    {
-        onNewConnection = std::move(call);
-    };
+    std::function<void(int fd, InetAddress addr)> accept_connection_cb;
 
 private:
     void onReadable();

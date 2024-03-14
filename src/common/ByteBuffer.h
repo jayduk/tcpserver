@@ -136,7 +136,7 @@ public:
 
     bool operator!=(const self& rhs) const
     {
-        return !(*this == rhs);
+        return *this != rhs;
     }
 };
 
@@ -160,7 +160,7 @@ public:
 
     std::vector<std::pair<char*, int>> clips();
 
-    void        retrive_all();
+    void        retrieve_all();
     void        retrieve(size_t len);
     std::string retrieve_as_string();
     size_t      retrieve_as_data(char* data, size_t len);
@@ -331,7 +331,7 @@ std::vector<std::pair<char*, int>> ByteBuffer<buffer_size>::clips()
 }
 
 template<int buffer_size>
-void ByteBuffer<buffer_size>::retrive_all()
+void ByteBuffer<buffer_size>::retrieve_all()
 {
     for (size_t i = 1; i < map_.size(); i++) {
         free_buffer(map_[i]);
@@ -345,7 +345,7 @@ template<int buffer_size>
 void ByteBuffer<buffer_size>::retrieve(size_t len)
 {
     if (len == size()) {
-        retrive_all();
+        retrieve_all();
     } else {
         begin_ += len;
 

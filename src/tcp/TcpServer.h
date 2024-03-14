@@ -1,13 +1,13 @@
 #ifndef TCPSERVER_H_
 #define TCPSERVER_H_
 
-#include "Acceptor.h"
-#include "InetAddress.h"
 #include "ReactorEventLoop.h"
 #include "ReactorEventLoopPool.h"
 #include "TcpConnection.h"
 #include "common/Buffer.h"
 #include "common/ByteBuffer.h"
+#include "tcp/Acceptor.h"
+#include "tcp/InetAddress.h"
 
 #include <cstdint>
 #include <functional>
@@ -22,19 +22,18 @@ private:
     std::map<int, TcpConnectionPtr>       tcp_connections_;
 
 public:
-    TcpServer(ReactorEventLoop* loop, uint16_t port, bool edge_mode);
+    TcpServer(ReactorEventLoop* loop, uint16_t port);
     ~TcpServer() = default;
 
 public:
     void setThreadNum(int num);
 
 public:
-    std::function<void(TcpConnectionPtr, InetAddress)>   onEstablishNewConnectionCallback;
-    std::function<void(TcpConnectionPtr, ByteBuffer<>*)> onReciveMessageCallback;
+    std::function<void(TcpConnectionPtr, InetAddress)>   new_connection_cb;
+    std::function<void(TcpConnectionPtr, ByteBuffer<>*)> handle_message_cb;
 
 private:
-    void        onNewConnection(int fd, InetAddress addr);
-    static void onReciveMessage(TcpConnection* conn, Buffer* buffer);
+    void onAcceptConnection(int fd, InetAddress addr);
 };
 
 #endif  // TCPSERVER_H_

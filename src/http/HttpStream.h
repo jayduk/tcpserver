@@ -8,5 +8,5 @@ public:
     ~HttpStream() = default;
 
 public:
-    void append(const char* data, size_t len) {}
+    void append(const char* data, size_t len);
 };

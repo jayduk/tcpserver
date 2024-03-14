@@ -18,16 +18,16 @@ public:
 
 private:
     ReactorEventLoop* loop_;
-    int index_;  // 0->add, 1->delete, 2->update
-    int sockfd_;
-    uint32_t event_;
-    uint32_t revent_;
+    int               index_;  // 0->add, 1->delete, 2->update
+    int               sockfd_;
+    uint32_t          event_;
+    uint32_t          revent_;
 
     std::weak_ptr<void> tie_;
-    bool tied_;
+    bool                tied_;
 
 public:
-    Channel(ReactorEventLoop* loop, int fd, bool edge_mode = true);
+    Channel(ReactorEventLoop* loop, int fd);
     ~Channel() override;
 
 public:

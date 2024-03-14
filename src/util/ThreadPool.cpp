@@ -1,5 +1,4 @@
-#include "thread/threadpool.h"
-#include <cstdio>
+#include "ThreadPool.h"
 #include <iostream>
 
 ThreadPool::ThreadPool(uint16_t thread_size, uint16_t thread_max_size, int thread_wait_millis)
@@ -15,7 +14,7 @@ void ThreadPool::waitAll()
 {
     if (tasks_.empty() && thread_count_ == available_count_)
         return;
-    
+
     std::unique_lock<std::mutex> remove_lock(remove_mutex_);
 
     available_cv_.wait(remove_lock, [&] {
@@ -26,8 +25,7 @@ void ThreadPool::waitAll()
 void ThreadPool::shutdown()
 {
     shutdown_ = true;
-    while (thread_count_ > 0)
-    {
+    while (thread_count_ > 0) {
         removeThread();
     }
 }
@@ -48,30 +46,25 @@ void ThreadPool::removeThread()
 
 void ThreadPool::threadFunc()
 {
-    while (!shutdown_)
-    {
+    while (!shutdown_) {
         std::function<void()> func;
 
-        if (!tasks_.pop(thread_wait_millis_, &func))
-        {
-            if (thread_count_ > thread_default_size_)
-            {
+        if (!tasks_.pop(thread_wait_millis_, &func)) {
+            if (thread_count_ > thread_default_size_) {
                 break;
-            }
-            else
-            {
+            } else {
                 continue;
             }
         }
 
-        if (func == nullptr)
-        {
+        if (func == nullptr) {
             break;
         }
 
         available_count_--;
         func();
         available_count_++;
+
         available_cv_.notify_all();
     }
 

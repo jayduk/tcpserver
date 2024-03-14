@@ -1,7 +1,7 @@
 #ifndef __NET_THREAD_POOL_H__
 #define __NET_THREAD_POOL_H__
 
-#include "thread/blockingqueue.h"
+#include "BlockingQueue.h"
 
 #include <functional>
 #include <future>
@@ -14,18 +14,18 @@ class ThreadPool
 private:
     uint16_t thread_default_size_;
     uint16_t thread_max_size_;
-    int thread_wait_millis_;
+    int      thread_wait_millis_;
 
-    std::atomic<bool> shutdown_;
-    std::atomic<int> thread_count_;
-    std::atomic<int> available_count_;
+    std::atomic<bool>                    shutdown_;
+    std::atomic<int>                     thread_count_;
+    std::atomic<int>                     available_count_;
     BlockingQueue<std::function<void()>> tasks_;
 
     std::condition_variable available_cv_;
-    std::mutex remove_mutex_;
+    std::mutex              remove_mutex_;
 
 public:
-    explicit ThreadPool(uint16_t thread_size = 10, uint16_t thread_max_size = 128, int thread_wait_millis = 5000);
+    explicit ThreadPool(uint16_t thread_size = 64, uint16_t thread_max_size = 128, int thread_wait_millis = 5000);
     ~ThreadPool() = default;
 
     std::string info() const
@@ -37,8 +37,8 @@ public:
 public:
     template<typename Callable, typename... Args>
     auto commit(Callable&& task, Args&&... args) -> std::future<decltype(std::bind(
-        std::forward<Callable>(task),
-        std::forward<Args>(args)...)())>;
+                                                     std::forward<Callable>(task),
+                                                     std::forward<Args>(args)...)())>;
 
     void waitAll();
     // TODO: 待完善
@@ -73,8 +73,7 @@ auto ThreadPool::commit(Callable&& task, Args&&... args)
     // 队列通用安全封包函数，并压入阻塞队列
     tasks_.push(wrapper_func);
 
-    if (tasks_.size() > available_count_ && thread_count_ < thread_max_size_)
-    {
+    if (tasks_.size() > available_count_ && thread_count_ < thread_max_size_) {
         createThread();
     }
 
