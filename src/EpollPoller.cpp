@@ -41,7 +41,7 @@ void EpollPoller::updateChannel(Channel* channel)
     }
 
     epoll_event event{};
-    event.events = channel->event();
+    event.events   = channel->event();
     event.data.ptr = channel;
 
     if (channel->index() == Channel::kToAdd)

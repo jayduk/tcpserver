@@ -1,12 +1,15 @@
 #ifndef __BYTEBUFFER_H__
 #define __BYTEBUFFER_H__
 
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <iostream>
 #include <iterator>
+#include <string>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 #include "log/easylogging++.h"
@@ -52,8 +55,7 @@ public:
 
     self& operator++()
     {
-        if (++cur == last)
-        {
+        if (++cur == last) {
             set_node(cur_node + 1);
             cur = first;
         }
@@ -62,8 +64,7 @@ public:
 
     self& operator--()
     {
-        if (cur == first)
-        {
+        if (cur == first) {
             set_node(cur_node - 1);
             cur = last;
         }
@@ -88,12 +89,9 @@ public:
     self& operator+=(difference_type n)
     {
         difference_type offset = n + (cur - first);
-        if (offset >= 0 && offset < difference_type(buffer_size))
-        {
+        if (offset >= 0 && offset < difference_type(buffer_size)) {
             cur += n;
-        }
-        else
-        {
+        } else {
             difference_type node_offset = offset > 0 ? offset / difference_type(buffer_size)
                                                      : -difference_type((-offset - 1) / buffer_size) - 1;
 
@@ -160,6 +158,9 @@ public:
     ssize_t read_fd(int fd);
     ssize_t send_fd(int fd);
 
+    std::vector<std::pair<char*, int>> clips();
+
+    void        retrive_all();
     void        retrieve(size_t len);
     std::string retrieve_as_string();
     size_t      retrieve_as_data(char* data, size_t len);
@@ -197,8 +198,7 @@ ByteBuffer<buffer_size>::ByteBuffer(size_t size)
   , begin_()
   , end_()
 {
-    for (auto& it : map_)
-    {
+    for (auto& it : map_) {
         it = alloc_buffer();
     }
 
@@ -211,8 +211,7 @@ ByteBuffer<buffer_size>::ByteBuffer(size_t size)
 template<int buffer_size>
 ByteBuffer<buffer_size>::~ByteBuffer()
 {
-    for (auto buffer : map_)
-    {
+    for (auto buffer : map_) {
         free_buffer(buffer);
     }
 }
@@ -226,20 +225,18 @@ ssize_t ByteBuffer<buffer_size>::read_fd(int fd)
     bool    error            = false;
     ssize_t total_read_bytes = 0;
 
-    while (!read_over)
-    {
+    while (!read_over) {
         size_t extra_buffers_start = 0;
 
-        auto buffers = make_read_buffers(read_buffer_size, &extra_buffers_start);
-        read_buffer_size *= 2;
+        auto buffers     = make_read_buffers(read_buffer_size, &extra_buffers_start);
+        read_buffer_size = std::min(read_buffer_size * 2, (size_t)65001);
 
         ssize_t buffered_size = end_.last - end_.cur;
 
         struct iovec vec[buffers.size() + 1];
         vec[0].iov_base = end_.cur;
         vec[0].iov_len  = buffered_size;
-        for (size_t i = 0; i < buffers.size(); ++i)
-        {
+        for (size_t i = 0; i < buffers.size(); ++i) {
             vec[i + 1].iov_base = buffers[i];
             vec[i + 1].iov_len  = buffer_size;
         }
@@ -250,20 +247,14 @@ ssize_t ByteBuffer<buffer_size>::read_fd(int fd)
 
         read_over = buffered_size > read_bytes;
 
-        if (read_bytes < 0)
-        {
-            if (errno != EAGAIN && errno != EWOULDBLOCK)
-            {
+        if (read_bytes < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
                 error = true;
                 INF << errno;
             }
-        }
-        else if (read_bytes <= space_left)
-        {
+        } else if (read_bytes <= space_left) {
             end_ += read_bytes;
-        }
-        else
-        {
+        } else {
             size_t needed_nodes      = (read_bytes - space_left) / buffer_size + 1;
             size_t extra_buffers_end = std::min(extra_buffers_start + needed_nodes, buffers.size());
 
@@ -274,8 +265,7 @@ ssize_t ByteBuffer<buffer_size>::read_fd(int fd)
             end_ += read_bytes;
         }
 
-        for (size_t i = extra_buffers_start; i < buffers.size(); ++i)
-        {
+        for (size_t i = extra_buffers_start; i < buffers.size(); ++i) {
             free_buffer(buffers[i]);
         }
 
@@ -288,8 +278,7 @@ ssize_t ByteBuffer<buffer_size>::read_fd(int fd)
 template<int buffer_size>
 ssize_t ByteBuffer<buffer_size>::send_fd(int fd)
 {
-    if (size() == 0)
-    {
+    if (size() == 0) {
         return 0;
     }
 
@@ -297,20 +286,16 @@ ssize_t ByteBuffer<buffer_size>::send_fd(int fd)
 
     ssize_t write_bytes = 0;
 
-    if (node_count == 1)
-    {
+    if (node_count == 1) {
         write_bytes = write(fd, begin_.cur, end_.cur - begin_.cur);
-    }
-    else
-    {
+    } else {
         struct iovec vec[node_count];
 
         vec[0].iov_base = begin_.cur;
         vec[0].iov_len  = begin_.last - begin_.cur;
 
         size_t i = 1;
-        for (; i < node_count - 1; ++i)
-        {
+        for (; i < node_count - 1; ++i) {
             vec[i].iov_base = *(begin_.cur_node + i);
             vec[i].iov_len  = buffer_size;
         }
@@ -321,8 +306,7 @@ ssize_t ByteBuffer<buffer_size>::send_fd(int fd)
         write_bytes = writev(fd, vec, node_count);
     }
 
-    if (write_bytes > 0)
-    {
+    if (write_bytes > 0) {
         retrieve(write_bytes);
     }
 
@@ -330,24 +314,42 @@ ssize_t ByteBuffer<buffer_size>::send_fd(int fd)
 }
 
 template<int buffer_size>
+std::vector<std::pair<char*, int>> ByteBuffer<buffer_size>::clips()
+{
+    std::vector<std::pair<char*, int>> clips;
+
+    if (begin().cur_node == end().cur_node) {
+        clips.emplace_back(begin().cur, end().cur - begin().cur);
+    } else {
+        clips.emplace_back(begin().cur, begin().last - begin().cur);
+        for (auto it = begin().cur_node + 1; it != end().cur_node; ++it) {
+            clips.emplace_back(*it, buffer_size);
+        }
+        clips.emplace_back(end().first, end().cur - end().first);
+    }
+    return clips;
+}
+
+template<int buffer_size>
+void ByteBuffer<buffer_size>::retrive_all()
+{
+    for (size_t i = 1; i < map_.size(); i++) {
+        free_buffer(map_[i]);
+    }
+    map_.erase(map_.begin() + 1, map_.end());
+
+    begin_ = end_ = make_iterator(0);
+}
+
+template<int buffer_size>
 void ByteBuffer<buffer_size>::retrieve(size_t len)
 {
-    if (len == size())
-    {
-        for (size_t i = 1; i < map_.size(); i++)
-        {
-            free_buffer(map_[i]);
-        }
-        map_.erase(map_.begin() + 1, map_.end());
-
-        begin_ = end_ = make_iterator(0);
-    }
-    else
-    {
+    if (len == size()) {
+        retrive_all();
+    } else {
         begin_ += len;
 
-        for (auto it = map_.begin(); it != begin_.cur_node; ++it)
-        {
+        for (auto it = map_.begin(); it != begin_.cur_node; ++it) {
             free_buffer(*it);
         }
 
@@ -457,15 +459,13 @@ std::vector<char*> ByteBuffer<buffer_size>::make_read_buffers(size_t size, size_
     std::vector<char*> buffers;
 
     size -= end_.last - end_.cur;
-    for (auto it = end_.cur_node + 1; it != map_.end() && size > 0; ++it)
-    {
+    for (auto it = end_.cur_node + 1; it != map_.end() && size > 0; ++it) {
         buffers.push_back(*it);
         size -= buffer_size;
     }
 
     *extra_buffers_start = buffers.size();
-    while (size > 0)
-    {
+    while (size > 0) {
         buffers.push_back(alloc_buffer());
         size -= buffer_size;
     }
@@ -480,8 +480,7 @@ void ByteBuffer<buffer_size>::append_buffers(InputIterator begin, InputIterator 
     size_t begin_offset = begin_.cur - begin_.first;
     size_t end_offset   = end_ - begin_ + begin_offset;
 
-    for (auto it = begin; it != end; ++it)
-    {
+    for (auto it = begin; it != end; ++it) {
         map_.push_back(*it);
     }
 
@@ -492,16 +491,14 @@ void ByteBuffer<buffer_size>::append_buffers(InputIterator begin, InputIterator 
 template<int buffer_size>
 void ByteBuffer<buffer_size>::append_buffers(size_t count)
 {
-    if (count == 0)
-    {
+    if (count == 0) {
         return;
     }
 
     size_t begin_offset = begin_.cur - begin_.first;
     size_t end_offset   = end_ - begin_ + begin_offset;
 
-    while (count-- > 0)
-    {
+    while (count-- > 0) {
         map_.push_back(alloc_buffer());
     }
 
@@ -512,8 +509,7 @@ void ByteBuffer<buffer_size>::append_buffers(size_t count)
 template<int buffer_size>
 void ByteBuffer<buffer_size>::ensure_space(size_t len)
 {
-    if (reserve_space() > len)
-    {
+    if (reserve_space() > len) {
         return;
     }
 

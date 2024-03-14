@@ -82,8 +82,8 @@ void TcpConnection::handleRead()
     loop_->assetInLoopThread();
 
     ssize_t read_bytes = read_buffer_.read_fd(fd_);
-    TRA << "read read_bytes=" << read_bytes << " in fd=" << fd_;
-    if (read_bytes == 0)
+    TRA << "read read_bytes=" << read_bytes << " in fd=" << fd_ << " errno = " << errno;
+    if (read_bytes <= 0)
     {
         handleClose();
         return;
@@ -122,7 +122,9 @@ void TcpConnection::handleClose()
     close(fd_);
 
     if (onConnectionCloseCallback)
+    {
         onConnectionCloseCallback(fd_);
+    }
 
     TRA << fd_ << " closed";
 }
@@ -150,8 +152,7 @@ void TcpConnection::sendInloop(const std::string& msg)
                 TRA << "cache send message with length=" << msg.end() - start;
                 channel_->enableWriting();
                 return;
-            }
-            else if (errno == EINTR)
+            } else if (errno == EINTR)
                 continue;
             else
             {

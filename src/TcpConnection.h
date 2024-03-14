@@ -12,6 +12,7 @@
 #include <any>
 
 class TcpConnection;
+
 using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 
 class TcpConnection : noncopyable, public std::enable_shared_from_this<TcpConnection>
@@ -41,8 +42,7 @@ public:
     void shutdown();
 
     std::any& context();
-
-    void set_context(std::any&& context);
+    void      set_context(std::any&& context);
 
     int fd() const;
 

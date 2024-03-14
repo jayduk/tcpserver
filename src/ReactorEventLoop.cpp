@@ -46,12 +46,9 @@ void ReactorEventLoop::onloop()
     activeChannels_.clear();
     poller_->wait(1000, activeChannels_);
 
-    for (auto&& channel : activeChannels_)
-    {
+    for (auto&& channel : activeChannels_) {
         channel->handleEvent();
     }
-
-    INF << "one loop tick";
 }
 
 void ReactorEventLoop::wakeUp()

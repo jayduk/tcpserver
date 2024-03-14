@@ -2,6 +2,8 @@
 #define HTTP_HTTPRESPONSE_H_
 
 #include "TcpConnection.h"
+#include "common/ByteBuffer.h"
+#include "http/HttpStream.h"
 #include <map>
 
 class HttpResponse
@@ -14,11 +16,15 @@ private:
     std::string reason_phrase_;
 
     std::map<std::string, std::string> headers_;
-    std::string                        data_;
+
+    HttpStream body_buffer_;
 
 public:
     HttpResponse();
     ~HttpResponse() = default;
+
+    void flush();
+    void to_bytebuffer(ByteBuffer<>* buffer);
 };
 
 #endif  // HTTP_HTTPRESPONSE_H_

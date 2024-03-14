@@ -1,12 +1,13 @@
 #ifndef __HTTPPARSER_H__
 #define __HTTPPARSER_H__
 
+#include "common/ByteBuffer.h"
 #include "http-parser/http_parser.h"
-#include "http/IHttpParser.h"
 #include "http/common.h"
+#include <map>
 #include <string>
 
-class HttpParser : public IHttpParser
+class HttpParser
 {
     HttpMethod*                         method_{nullptr};
     std::string*                        url_{nullptr};
@@ -19,14 +20,9 @@ class HttpParser : public IHttpParser
     bool parse_header_field{false};
 
 public:
-    HttpParser() = default;
+    int parse(ByteBuffer<>& buffer){
 
-    void bind_method(HttpMethod* method) override;
-    void bind_url(std::string* url) override;
-    void bind_version(HttpVersion* version) override;
-    void bind_header(std::map<std::string, std::string>* header) override;
-
-    int parse(Buffer& buffer) override;
+    };
 };
 
 #endif  //_HttpParser_h_

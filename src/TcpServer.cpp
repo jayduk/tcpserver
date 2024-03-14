@@ -40,11 +40,13 @@ void TcpServer::onNewConnection(int fd, InetAddress addr)
         tcp_connections_.erase(fd);
     };
 
-    if (onReciveMessageCallback)
+    if (onReciveMessageCallback) {
         conn->onReciveMessageCallback = onReciveMessageCallback;
+    }
 
-    if (onEstablishNewConnectionCallback)
+    if (onEstablishNewConnectionCallback) {
         onEstablishNewConnectionCallback(conn, addr);
+    }
 
     io_loop->runInLoop([conn] {
         conn->init();

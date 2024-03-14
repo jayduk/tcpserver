@@ -7,7 +7,7 @@
 #include "TcpServer.h"
 #include "common/ByteBuffer.h"
 #include "common/noncopyable.h"
-
+#include "thread/threadpool.h"
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -16,17 +16,16 @@
 class HttpServer : noncopyable
 {
 private:
-    TcpServer server_;
+    TcpServer  server_;
+    ThreadPool pool_;
 
 public:
-    // std::function<void(HttpRequest, TcpConnectionPtr)> onHandleHttpRequest_;
-
 public:
     HttpServer(ReactorEventLoop* loop, uint16_t port);
 
 private:
-    static void onEstablishNewConnection(const TcpConnectionPtr& conn, InetAddress addr);
-    void        onReciveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const;
+    void onEstablishNewConnection(const TcpConnectionPtr& conn, InetAddress addr);
+    void onReciveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer) const;
 };
 
 #endif  // HTTP_HTTPSERVER_H_

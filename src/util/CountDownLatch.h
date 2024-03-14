@@ -34,9 +34,10 @@ void CountDownLatch::count_down()
 
 void CountDownLatch::wait()
 {
+        std::unique_lock<std::mutex> lock(mt_);
+
     while (count_ > 0)
     {
-        std::unique_lock<std::mutex> lock(mt_);
         cv_.wait(lock);
     }
 }

@@ -19,9 +19,7 @@
 
 #include "log/easylogging++.h"
 
-#include "http-parser/http_parser.h"
-
-#define PORT 9002
+#include "http/HttpRequest.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -37,122 +35,40 @@ void configLogSettings()
     el::Loggers::addFlag(el::LoggingFlag::StrictLogFileSizeCheck);
 }
 
-void onReciveMessage(TcpConnection* conn, Buffer buffer)
-{
-    auto msg = buffer.retrieveAllAsString();
-    conn->send(msg);
-}
-
-int onMessageBegin(http_parser* pParser)
-{
-    printf("@onMessageBegin call \n");
-    return 0;
-}
-
-int onHeaderComplete(http_parser* pParser)
-{
-    printf("@onHeaderComplete call \n");
-    return 0;
-}
-int onMessageComplete(http_parser* pParser)
-{
-    std::vector<int> v;
-    printf("@onMessageComplete call \n");
-    return 0;
-}
-
-int onURL(http_parser* pParser, const char* at, size_t length)
-{
-    printf("@onURL call, length:[%ld] \n", length);
-
-    printf("@onURL url:[%s] \n", std::string(at, at + length).c_str());
-    return 0;
-}
-int onStatus(http_parser* pParser, const char* at, size_t length)
-{
-    printf("@onStatus call, length:[%d] \n", length);
-
-    printf("@onStatus status:[%s] \n", std::string(at, at + length).c_str());
-    return 0;
-}
-int onHeaderField(http_parser* pParser, const char* at, size_t length)
-{
-    printf("@onHeaderField call, length:[%d] \n", length);
-
-    printf("@onHeaderField field:[%s] \n", std::string(at, at + length).c_str());
-    return 0;
-}
-int onHeaderValue(http_parser* pParser, const char* at, size_t length)
-{
-    printf("@onHeaderValue call, length:[%d] \n", length);
-    std::string strValue(at, length);
-    printf("@onHeaderValue value:[%s] \n", strValue.c_str());
-
-    return 0;
-}
-int onBody(http_parser* pParser, const char* at, size_t length)
-{
-    printf("@onBody call, length:[%d] \n", length);
-    printf("@onBody recv:[%s] \n", std::string(at, length).c_str());
-    return 0;
-}
-
 int main()
 {
     configLogSettings();
 
-    //     http_parser          parser;
-    //     http_parser_settings settings;
-    //     http_parser_init(&parser, HTTP_REQUEST);
-    //     http_parser_settings_init(&settings);
+    char s[] = "GET /host HTTP/1.1\r\n\
+Transfer-Encoding: chunked\r\n\
+Host: www.baidu.com\r\n\
+Connection: keep-alive\r\n\
+Cache-Control: max-age=0\r\n\
+sec-ch-ua: \" Not A;Brand\";v=\"99\", \"Chromium\";v=\"96\", \"Google Chrome\";v=\"96\"\r\n\
+sec-ch-ua-mobile: ?0\r\n\
+sec-ch-ua-platform: \" macOS \"\r\n\
+Upgrade-Insecure-Requests: 1\r\n\
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36\r\n\
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9\r\n\
+Sec-Fetch-Site: none\r\n\
+Sec-Fetch-Mode: navigate\r\n\
+Sec-Fetch-User: ?1\r\n\
+Sec-Fetch-Dest: document\r\n\
+Accept-Encoding: gzip, deflate, br\r\n\
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8\r\n\
+Cookie: BIDUPSID=8B0207CE0B6364E5934651E84F17999B; PSTM=1619707475; \r\n\r\n";
 
-    //     settings.on_message_begin    = onMessageBegin;
-    //     settings.on_headers_complete = onHeaderComplete;
-    //     settings.on_message_complete = onMessageComplete;
-    //     settings.on_url              = onURL;
-    //     settings.on_status           = onStatus;
-    //     settings.on_header_field     = onHeaderField;
-    //     settings.on_header_value     = onHeaderValue;
-    //     settings.on_body             = onBody;
+    char chunked_body[] = "4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n\
+GET /host HTTP/1.1\r\n\
+Transfer-Encoding: chunked\r\n\
+Host: www.baidu.com\r\n\
+Connection: keep-alive\r\n";
 
-    //     char s[] = "POST /DEMOWebServices2.8/Service.asmx/CancelOrder HTTP/1.1\r\n\
-// Host: api.efxnow.com\r\n\
-// Content-Type: application/x-www-form-urlencoded\r\n\
-// Content-Length: 53\r\n\
-// \r\n\
-// UserID=string&PWD=string&OrderConfirmation=string    POST /DEMOWebServices2.8/Ser4444444444444";
+    HttpRequest request;
 
-    //     char* data = s;
-    //     for (int i = 0; i < 6; ++i)
-    //     {
-    //         auto nParseBytes = http_parser_execute(&parser, &settings, data, 42);
-    //         INF << "n parse = " << nParseBytes;
-    //         data += 42;
-    //     }
+    auto i = request.parser(s, strlen(s));
+    WAR << i;
 
-    // ReactorEventLoop loop;
-    // TcpServer server(&loop, 9002, true);
-
-    // server.onReciveMessageCallback = [](const TcpConnectionPtr& conn, Buffer* buffer) {
-    //     conn->send(buffer->retrieveAllAsString());
-    // };
-
-    // loop.loop();
-    ReactorEventLoop loop;
-
-    TcpServer server(&loop, 45678, true);
-    server.setThreadNum(1);
-    server.onReciveMessageCallback = [](TcpConnectionPtr conn, ByteBuffer<>* buffer) {
-        auto s = buffer->retrieve_as_string();
-        conn->send(s);
-    };
-
-    // loop.runEvery(
-    //     1000,
-    //     [] {
-    //         INF << "HELLO";
-    //     },
-    //     5000);
-    loop.start();
-    loop.loop();
+    i = request.parser(chunked_body, strlen(chunked_body));
+    WAR << i;
 }

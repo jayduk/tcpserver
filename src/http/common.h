@@ -3,17 +3,20 @@
 
 enum class HttpVersion
 {
-    Http1_1,
+    Http1_0 = 10,
+    Http1_1 = 11,
 };
 
 enum class HttpMethod
 {
+    DELETE = 0,
     GET,
+    HEAD,
     POST,
     PUT,
-    DELETE,
+    CONNECT,
+    OPTION,
     TRACE,
-    OPTION
 };
 
 #endif  //_common_h_
