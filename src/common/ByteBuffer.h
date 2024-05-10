@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <utility>
@@ -156,7 +157,7 @@ public:
     ~ByteBuffer();
 
     ssize_t read_fd(int fd);
-    ssize_t send_fd(int fd);
+    ssize_t write_fd(int fd);
 
     std::vector<std::pair<char*, int>> clips();
 
@@ -169,7 +170,9 @@ public:
     void append(const std::string& data);
 
     template<int other_buffer_size>
-    void append(ByteBuffer<other_buffer_size> buffer);
+    void append(ByteBuffer<other_buffer_size>& buffer);
+
+    void append(ByteBuffer<buffer_size>&& buffer);
 
     iterator begin();
     iterator end();
@@ -178,17 +181,17 @@ public:
 
 private:
     char* alloc_buffer();
-    void  free_buffer(char* buffer);
+    void  free_buffer(const char* buffer);
 
     [[nodiscard]] size_t reserve_space();
 
     iterator make_iterator(size_t offset);
 
-    std::vector<char*> make_read_buffers(size_t size, size_t* extra_buffers_start);
+    std::vector<char*> make_read_buffers(ssize_t size, size_t* extra_buffers_start);
 
     template<typename InputIterator>
     void append_buffers(InputIterator begin, InputIterator end);
-    void append_buffers(size_t count);
+    void append_buffers(ssize_t count);
 
     void ensure_space(size_t len);
 };
@@ -260,6 +263,7 @@ ssize_t ByteBuffer<buffer_size>::read_fd(int fd)
             size_t extra_buffers_end = std::min(extra_buffers_start + needed_nodes, buffers.size());
 
             append_buffers(buffers.begin() + extra_buffers_start, buffers.begin() + extra_buffers_end);
+            DBG << "danger:" << needed_nodes << " " << extra_buffers_end << " " << extra_buffers_start << " " << needed_nodes - extra_buffers_end - extra_buffers_start;
             append_buffers(needed_nodes - extra_buffers_end - extra_buffers_start);
 
             extra_buffers_start += needed_nodes;
@@ -277,7 +281,7 @@ ssize_t ByteBuffer<buffer_size>::read_fd(int fd)
 }
 
 template<int buffer_size>
-ssize_t ByteBuffer<buffer_size>::send_fd(int fd)
+ssize_t ByteBuffer<buffer_size>::write_fd(int fd)
 {
     if (size() == 0) {
         return 0;
@@ -302,7 +306,7 @@ ssize_t ByteBuffer<buffer_size>::send_fd(int fd)
         }
 
         vec[i].iov_base = end_.first;
-        vec[i].iov_len  = end_.cur - end_.first + 1;
+        vec[i].iov_len  = end_.cur - end_.first;
 
         write_bytes = writev(fd, vec, node_count);
     }
@@ -407,12 +411,35 @@ void ByteBuffer<buffer_size>::append(const std::string& data)
 
 template<int buffer_size>
 template<int other_buffer_size>
-void ByteBuffer<buffer_size>::append(ByteBuffer<other_buffer_size> buffer)
+void ByteBuffer<buffer_size>::append(ByteBuffer<other_buffer_size>& buffer)
 {
+    DBG << "append(ByteBuffer<other_buffer_size>& buffer)" << buffer.size();
     ensure_space(buffer.size());
 
     std::copy(buffer.begin(), buffer.end(), end_);
     end_ += buffer.size();
+}
+
+template<int buffer_size>
+void ByteBuffer<buffer_size>::append(ByteBuffer<buffer_size>&& buffer)
+{
+    INF << "append && bytebuffer";
+    if (end_.cur == end_.first) {
+        int total_size = size() + buffer.size();
+        for (auto it = end_.cur_node; it != map_.end(); ++it) {
+            free_buffer(*it);
+        }
+
+        map_.erase(end_.cur_node, map_.end());
+        map_.insert(map_.end(), buffer.map_.begin(), buffer.map_.end());
+        buffer.map_.clear();
+
+        end_ = make_iterator(total_size);
+    } else {
+        //TODO: it should hit method ByteBuffer& ?
+        INF << "not implement";
+        append(buffer);
+    }
 }
 
 template<int buffer_size>
@@ -434,7 +461,7 @@ char* ByteBuffer<buffer_size>::alloc_buffer()
 }
 
 template<int buffer_size>
-void ByteBuffer<buffer_size>::free_buffer(char* buffer)
+void ByteBuffer<buffer_size>::free_buffer(const char* buffer)
 {
     delete[] buffer;
 }
@@ -461,7 +488,7 @@ typename ByteBuffer<buffer_size>::iterator ByteBuffer<buffer_size>::make_iterato
 }
 
 template<int buffer_size>
-std::vector<char*> ByteBuffer<buffer_size>::make_read_buffers(size_t size, size_t* extra_buffers_start)
+std::vector<char*> ByteBuffer<buffer_size>::make_read_buffers(ssize_t size, size_t* extra_buffers_start)
 {
     std::vector<char*> buffers;
 
@@ -496,7 +523,7 @@ void ByteBuffer<buffer_size>::append_buffers(InputIterator begin, InputIterator 
 }
 
 template<int buffer_size>
-void ByteBuffer<buffer_size>::append_buffers(size_t count)
+void ByteBuffer<buffer_size>::append_buffers(ssize_t count)
 {
     if (count == 0) {
         return;
@@ -516,11 +543,16 @@ void ByteBuffer<buffer_size>::append_buffers(size_t count)
 template<int buffer_size>
 void ByteBuffer<buffer_size>::ensure_space(size_t len)
 {
+    if (len == 0) {
+        DBG << "len is 0";
+        return;
+    }
     if (reserve_space() > len) {
         return;
     }
 
-    size_t extra_nodes = (len - reserve_space()) / buffer_size + 1;
+    ssize_t extra_nodes = (len - reserve_space()) / buffer_size + 1;
+    DBG << "need extra nodes " << extra_nodes;
     append_buffers(extra_nodes);
 }
 

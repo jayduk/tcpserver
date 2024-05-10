@@ -1,20 +1,21 @@
 #include "http/HttpContext.h"
 #include "common/ByteBuffer.h"
 #include "http-parser/http_parser.h"
+#include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
+#include "http/HttpRouteMapping.h"
 #include <memory>
 #include <mutex>
 #include <string>
 #include <sys/types.h>
 
-HttpContext::HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>& conn)
+HttpContext::HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>& conn, HttpHandleFn fn)
   : conn_(conn)
   , thread_pool_(pool)
+  , handle_fn_(fn)
 {
     http_parser_init(&parser_, HTTP_REQUEST);
     http_parser_settings_init(&settings_);
-
-    requests_mt_ = new std::mutex();
 
     parser_.data = this;
 
@@ -66,9 +67,9 @@ HttpContext::HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>&
 
         request->set_method(static_cast<HttpMethod>(parser->method));
         request->set_version(static_cast<HttpVersion>(parser->http_major * 10 + parser->http_minor));
-
         context->handle_request();
 
+        INF << "headers complete";
         return 0;
     };
 
@@ -76,29 +77,31 @@ HttpContext::HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>&
         auto* context = static_cast<HttpContext*>(parser->data);
         auto  request = context->request_;
 
-        request->body_buffer_.append(at, length);
+        request->body_buffer_.write(at, length);
+
+        INF << "body: ";
 
         return 0;
     };
 
     settings_.on_message_complete = [](http_parser* parser) -> int {
         auto* context = static_cast<HttpContext*>(parser->data);
-        auto& request = context->request_;
-
-        request.reset();
+        context->request_.reset();
+        INF << "message complete";
         return 0;
     };
 }
 
 HttpContext::~HttpContext()
 {
-    delete requests_mt_;
+    INF << "HttpContext dtor";
 }
 
 bool HttpContext::handle(ByteBuffer<>* buffer)
 {
     auto clips = buffer->clips();
     for (auto clip : clips) {
+        INF << "parse clip " << clip.second << " bytes :" << std::string(clip.first, clip.second);
         int parsed = (int)http_parser_execute(&parser_, &settings_, clip.first, clip.second);
         if (parsed != clip.second) {
             return false;
@@ -114,53 +117,59 @@ bool HttpContext::handle(ByteBuffer<>* buffer)
             return false;
         }
     }
+    buffer->retrieve_all();
     return true;
 }
 
 void HttpContext::handle_request()
 {
-    std::unique_lock<std::mutex> lock(*requests_mt_);
+    std::unique_lock<std::mutex> lock(requests_mt_);
 
     if (requests_.empty()) {
-        requests_.push(request_);
-
         thread_pool_->commit([this]() {
             exec_on_thread();
         });
-
-    } else {
-        requests_.push(request_);
     }
+
+    requests_.push(request_);
 }
 
 void HttpContext::exec_on_thread()
 {
-    std::unique_lock<std::mutex> lock(*requests_mt_);
+    std::unique_lock<std::mutex> lock(requests_mt_);
+
     while (!requests_.empty()) {
-        auto request = requests_.front();
+        std::shared_ptr<HttpRequest> request = requests_.front();
         requests_.pop();
 
         lock.unlock();
 
         // handle request
-        std::shared_ptr<HttpResponse> response = std::make_shared<HttpResponse>();
+        std::shared_ptr<HttpResponse> response = build_response(request);
 
-        ByteBuffer<> buffer;
-        response->to_bytebuffer(&buffer);
-        response->conn_->send(buffer.retrieve_as_string());
+        if (handle_fn_) {
+            handle_fn_(request, response);
+        }
+
+        auto buffer = std::make_shared<ByteBuffer<>>();
+
+        response->to_bytebuffer(buffer.get(), true);
+        response->conn_->send(buffer);
 
         lock.lock();
     }
 }
 
-std::shared_ptr<HttpResponse> HttpContext::build_response(std::shared_ptr<HttpRequest> request)
+std::shared_ptr<HttpResponse> HttpContext::build_response(const std::shared_ptr<HttpRequest>& request)
 {
     auto resp = std::make_shared<HttpResponse>();
 
     resp->conn_ = conn_.lock();
 
-    resp->version_               = request->version_;
-    resp->headers_["Connection"] = "keep-alive";
+    resp->version_ = request->version_;
+
+    resp->headers_["Connection"]   = request->header("Connection");
+    resp->headers_["Content-Type"] = "text/html";
 
     return resp;
 }

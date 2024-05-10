@@ -1,8 +1,11 @@
 #include "http/HttpResponse.h"
 #include "common/ByteBuffer.h"
 #include "http/common.h"
+#include "log/easylogging++.h"
 #include <chrono>
+#include <cstddef>
 #include <iomanip>
+#include <memory>
 #include <string>
 
 using time_point = std::chrono::system_clock::time_point;
@@ -39,21 +42,35 @@ void HttpResponse::set_header(const std::string& key, const std::string& value)
     headers_[key] = value;
 }
 
-HttpStream HttpResponse::body_buffer()
+HttpStream* HttpResponse::output_stream()
 {
-    return body_buffer_;
+    return &body_buffer_;
 }
 
 void HttpResponse::flush()
 {
     set_chunked();
-    ByteBuffer<> buffer;
-    to_bytebuffer(&buffer);
 
-    conn_->send(&buffer);
+    if (body_buffer_.size() == 0) {
+        DBG << "HttpResponse::flush: empty response";
+        return;
+    }
+
+    std::shared_ptr<ByteBuffer<>> buffer = std::make_shared<ByteBuffer<>>();
+    to_bytebuffer(buffer.get());
+
+    conn_->send(buffer);
 }
 
-void HttpResponse::to_bytebuffer(ByteBuffer<>* buffer)
+std::string to_hex(size_t n)
+{
+    std::stringstream ss;
+    ss << std::hex << n;
+    DBG << "to_hex: " << ss.str();
+    return ss.str();
+}
+
+void HttpResponse::to_bytebuffer(ByteBuffer<>* buffer, bool end)
 {
     if (!is_header_sent_) {
         buffer->append(HttpVersionToString(version_));
@@ -79,12 +96,21 @@ void HttpResponse::to_bytebuffer(ByteBuffer<>* buffer)
         is_header_sent_ = true;
     }
 
-    // if (is_chunked_) {
-    //     buffer->append(std::to_string(body_buffer_.size(), 16));
-    //     buffer->append("\r\n");
-    // }
+    if (!is_chunked_) {
+        body_buffer_.transfer_to(buffer);
+        return;
+    }
 
-    // buffer->append(body_buffer_);
+    if (body_buffer_.size() > 0) {
+        buffer->append(to_hex(body_buffer_.size()));
+        buffer->append("\r\n");
+        body_buffer_.transfer_to(buffer);
+        buffer->append("\r\n");
+    }
+
+    if (end) {
+        buffer->append("0\r\n\r\n");
+    }
 }
 
 void HttpResponse::set_chunked()

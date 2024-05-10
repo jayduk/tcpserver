@@ -18,6 +18,7 @@ enum class HttpMethod
     CONNECT,
     OPTION,
     TRACE,
+    MAX_FLAG_
 };
 
 std::string HttpVersionToString(HttpVersion version);

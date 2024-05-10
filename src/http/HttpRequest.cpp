@@ -25,10 +25,25 @@ HttpMethod HttpRequest::method() const
 {
     return method_;
 }
-HttpStream* HttpRequest::inputBuffer()
+HttpStream* HttpRequest::input_stream()
 {
     return &body_buffer_;
 }
+
+std::map<std::string, std::string>* HttpRequest::path_params()
+{
+    return &path_params_;
+}
+
+std::string HttpRequest::path_param(const std::string& key) const
+{
+    auto it = path_params_.find(key);
+    if (it != path_params_.end()) {
+        return it->second;
+    }
+    return "";
+}
+
 void HttpRequest::set_method(HttpMethod method)
 {
     method_ = method;

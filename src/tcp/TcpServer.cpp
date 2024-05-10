@@ -50,4 +50,6 @@ void TcpServer::onAcceptConnection(int fd, InetAddress addr)
     io_loop->runInLoop([conn] {
         conn->init();
     });
+
+    INF << "TcpServer::onAcceptConnection end";
 }

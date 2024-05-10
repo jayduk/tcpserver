@@ -18,9 +18,9 @@ using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 class TcpConnection : noncopyable, public std::enable_shared_from_this<TcpConnection>
 {
 private:
-    int      fd_;
-    bool     running;
-    std::any context_;
+    int   fd_;
+    bool  running_;
+    void* context_;
 
     ReactorEventLoop*        loop_;
     std::unique_ptr<Channel> channel_;
@@ -40,10 +40,11 @@ public:
 
     void send(const std::string& msg);
     void send(ByteBuffer<>* buffer);
+    void send(std::shared_ptr<ByteBuffer<>> buffer);
     void shutdown();
 
-    std::any& context();
-    void      set_context(std::any&& context);
+    void* context();
+    void  set_context(void* context);
 
     int fd() const;
 
@@ -54,6 +55,8 @@ private:
 
 private:
     void sendInLoop(const std::string& msg);
+    void sendInLoop(ByteBuffer<>* buffer);
+    void sendInLoop(std::shared_ptr<ByteBuffer<>> buffer);
 };
 
 #endif  // TCPCONNECTION_H_

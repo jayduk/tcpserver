@@ -6,6 +6,7 @@
 #include "http/common.h"
 #include "tcp/TcpConnection.h"
 #include <map>
+#include <memory>
 
 class HttpResponse
 {
@@ -30,15 +31,17 @@ public:
     ~HttpResponse() = default;
 
 public:
-    void       set_status_code(int code, const std::string& phrase);
-    void       set_header(const std::string& key, const std::string& value);
-    HttpStream body_buffer();
+    void        set_status_code(int code, const std::string& phrase);
+    void        set_header(const std::string& key, const std::string& value);
+    HttpStream* output_stream();
 
     void flush();
-    void to_bytebuffer(ByteBuffer<>* buffer);
+    void to_bytebuffer(ByteBuffer<>* buffer, bool end = false);
 
 private:
     void set_chunked();
 };
+
+using HttpResponsePtr = std::shared_ptr<HttpResponse>;
 
 #endif  // HTTP_HTTPRESPONSE_H_

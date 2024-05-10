@@ -6,6 +6,7 @@
 #include "http-parser/http_parser.h"
 #include "http/HttpRequest.h"
 #include "http/HttpResponse.h"
+#include "http/HttpRouteMapping.h"
 #include "http/common.h"
 #include "tcp/TcpConnection.h"
 #include "util/ThreadPool.h"
@@ -24,11 +25,12 @@ class HttpContext
 {
     std::weak_ptr<TcpConnection> conn_;
     ThreadPool*                  thread_pool_{nullptr};
+    HttpHandleFn                 handle_fn_{nullptr};
 
     std::shared_ptr<HttpRequest>             request_;
     std::queue<std::shared_ptr<HttpRequest>> requests_;
 
-    std::mutex* requests_mt_;
+    std::mutex requests_mt_;
 
     http_parser          parser_{};
     http_parser_settings settings_{};
@@ -37,7 +39,7 @@ class HttpContext
     std::string header_field_{false};
 
 public:
-    HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>& conn);
+    HttpContext(ThreadPool* pool, const std::shared_ptr<TcpConnection>& conn, HttpHandleFn fn);
     ~HttpContext();
 
 public:
@@ -47,7 +49,7 @@ private:
     void handle_request();
     void exec_on_thread();
 
-    std::shared_ptr<HttpResponse> build_response(std::shared_ptr<HttpRequest> request);
+    std::shared_ptr<HttpResponse> build_response(const std::shared_ptr<HttpRequest>& request);
 };
 
 #endif  //_HttpContext_h_

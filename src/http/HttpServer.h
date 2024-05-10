@@ -3,6 +3,9 @@
 
 #include "common/ByteBuffer.h"
 #include "common/noncopyable.h"
+#include "http/HttpRequest.h"
+#include "http/HttpResponse.h"
+#include "http/HttpRouteMapping.h"
 #include "tcp/InetAddress.h"
 #include "tcp/ReactorEventLoop.h"
 #include "tcp/TcpConnection.h"
@@ -16,16 +19,20 @@
 class HttpServer : noncopyable
 {
 private:
-    TcpServer  server_;
-    ThreadPool pool_;
+    TcpServer         server_;
+    ThreadPool        pool_;
+    HttpRouteMapping* mapping_;
 
 public:
-public:
     HttpServer(ReactorEventLoop* loop, uint16_t port);
+
+    void setIoLoopCount(int num);
+    void setMapping(HttpRouteMapping* mapping);
 
 private:
     void        onEstablishConnection(const TcpConnectionPtr& conn, InetAddress addr);
     static void onReceiveHttpMessage(const TcpConnectionPtr& conn, ByteBuffer<>* buffer);
+    void        onHandleRequest(const std::shared_ptr<HttpRequest>& request, const std::shared_ptr<HttpResponse>& response);
 };
 
 #endif  // HTTP_HTTPSERVER_H_

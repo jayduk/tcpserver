@@ -1,5 +1,6 @@
 #include "TcpConnection.h"
 #include "ReactorEventLoop.h"
+#include "common/ByteBuffer.h"
 #include "log/easylogging++.h"
 #include "tcp/Channel.h"
 
@@ -11,10 +12,11 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
+#include <utility>
 
 TcpConnection::TcpConnection(ReactorEventLoop* loop, int fd)
   : fd_(fd)
-  , running(true)
+  , running_(true)
   , context_(nullptr)
   , loop_(loop)
   , channel_(std::make_unique<Channel>(loop, fd))
@@ -34,9 +36,11 @@ TcpConnection::~TcpConnection()
 {
     INF << fd_ << " ~tcpconnection()";
 
-    if (running) {
+    if (running_) {
         handleClose();
     }
+
+    delete context_;
 }
 
 void TcpConnection::init()
@@ -47,13 +51,25 @@ void TcpConnection::init()
 
 void TcpConnection::send(const std::string& msg)
 {
-    loop_->runInLoop(&TcpConnection::sendInLoop, this, msg);
+    ByteBuffer<> buffer(msg.size() + 1);
+    buffer.append(msg);
+
+    loop_->runInLoop([this, &buffer] {
+        sendInLoop(&buffer);
+    });
 }
 
 void TcpConnection::send(ByteBuffer<>* buffer)
 {
     loop_->runInLoop([this, buffer] {
-        // sendInLoop(buffer->retrieveAsString());
+        sendInLoop(buffer);
+    });
+}
+
+void TcpConnection::send(std::shared_ptr<ByteBuffer<>> buffer)
+{
+    loop_->runInLoop([this, buffer] {
+        sendInLoop(buffer);
     });
 }
 
@@ -61,12 +77,12 @@ void TcpConnection::shutdown()
 {
 }
 
-std::any& TcpConnection::context()
+void* TcpConnection::context()
 {
     return context_;
 }
 
-void TcpConnection::set_context(std::any&& context)
+void TcpConnection::set_context(void* context)
 {
     context_ = context;
 }
@@ -103,7 +119,12 @@ void TcpConnection::handleWrite()
         return;
     }
 
-    auto write_bytes = write_buffer_.send_fd(fd_);
+    if (!running_) {
+        INF << fd_ << " handle write after not running" << write_buffer_.size();
+        return;
+    }
+
+    auto write_bytes = write_buffer_.write_fd(fd_);
     TRA << "Write bytes=" << write_bytes << " in write loop";
     if (write_buffer_.size() == 0) {
         channel_->disableWriting();
@@ -114,8 +135,8 @@ void TcpConnection::handleClose()
 {
     loop_->assetInLoopThread();
 
-    assert(running);
-    running = false;
+    assert(running_);
+    running_ = false;
 
     channel_->close();
 
@@ -128,34 +149,33 @@ void TcpConnection::handleClose()
     TRA << fd_ << " closed";
 }
 
-void TcpConnection::sendInLoop(const std::string& msg)
+void TcpConnection::sendInLoop(ByteBuffer<>* buffer)
 {
     loop_->assetInLoopThread();
 
-    if (write_buffer_.size() > 0) {
-        write_buffer_.append(msg.c_str(), msg.size());
+    if (!running_) {
         return;
     }
 
-    auto start = msg.begin();
-    while (start != msg.end()) {
-        ssize_t write_bytes = write(fd_, &*start, msg.end() - start);
-
-        if (write_bytes == -1) {
-            if (errno == EAGAIN) {
-                write_buffer_.append(&*start, msg.end() - start);
-                TRA << "cache send message with length=" << msg.end() - start;
-                channel_->enableWriting();
-                return;
-            } else if (errno == EINTR)
-                continue;
-            else {
-                ERR << "Write error " << errno;
-                return;  //TODO: write error}
-            }
-        }
-        start += write_bytes;
-
-        TRA << "send message in loop with length=" << write_bytes;
+    if (write_buffer_.size() > 0) {
+        write_buffer_.append(*buffer);
+        return;
     }
+
+    if (buffer->write_fd(fd_) == -1) {
+        if (errno != EAGAIN) {
+            ERR << "write error with errno=" << errno << " " << strerror(errno);
+            return;
+        }
+    }
+
+    if (buffer->size() > 0) {
+        write_buffer_.append(*buffer);
+        channel_->enableWriting();
+    }
+}
+
+void TcpConnection::sendInLoop(std::shared_ptr<ByteBuffer<>> buffer)
+{
+    sendInLoop(buffer.get());
 }
